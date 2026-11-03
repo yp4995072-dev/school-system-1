@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hệ Thống Phản Ánh & Quản Lý Sự Cố - THCS & THPT Khánh Hưng</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Firebase SDK (Đồng bộ thời gian thực Realtime) -->
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+    <style>
+        .map-pin { transform-origin: bottom center; animation: bouncePin 1s infinite alternate ease-in-out; }
+        @keyframes bouncePin { 0% { transform: translateY(0); } 100% { transform: translateY(-8px); } }
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: #f1f5f9; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+    </style>
+</head>
+<body class="bg-slate-100 font-sans h-screen flex flex-col overflow-hidden text-slate-800">
+
+    <!-- HEADER -->
+    <header class="bg-slate-900 text-white px-4 py-3 shadow-md flex justify-between items-center z-10 flex-shrink-0">
+        <div class="flex items-center space-x-3">
+            <div class="bg-emerald-600 p-2 rounded-lg flex items-center justify-center font-bold text-xl text-white">KH</div>
+            <div>
+                <h1 class="font-bold text-base md:text-lg leading-tight uppercase">Trường THCS & THPT Khánh Hưng</h1>
+                <p class="text-xs text-slate-400">Hệ Thống Báo Cáo Sự Cố Thời Gian Thực (Ẩn Danh)</p>
+            </div>
+        </div>
+        <div class="flex bg-slate-800 p-1 rounded-lg border border-slate-700">
+            <button id="btn-tab-student" onclick="switchTab('student')" class="px-3 py-1.5 rounded-md text-xs font-semibold bg-emerald-600 text-white shadow">
+                <i class="fa-solid fa-graduation-cap mr-1"></i> Trang Học Sinh
+            </button>
+            <button id="btn-tab-admin" onclick="switchTab('admin')" class="px-3 py-1.5 rounded-md text-xs font-semibold text-slate-400 hover:text-white">
+                <i class="fa-solid fa-user-shield mr-1"></i> Ban Giám Hiệu
+            </button>
+        </div>
+    </header>
+
+    <!-- BẢNG TIN TRƯỜNG -->
+    <div class="bg-amber-50 border-b border-amber-200 px-4 py-2 text-xs text-amber-900 flex justify-between items-center flex-shrink-0">
+        <div class="flex items-center space-x-2 truncate pr-2">
+            <span class="bg-amber-200 text-amber-800 font-bold px-2 py-0.5 rounded text-[10px] uppercase flex-shrink-0">
+                <i class="fa-solid fa-bullhorn mr-1"></i> Bảng tin
+            </span>
+            <span id="announcement-text" class="truncate font-medium">Đang kết nối hệ thống đám mây...</span>
+        </div>
+        <button id="btn-edit-announce" onclick="editAnnouncement()" class="hidden text-amber-700 hover:text-amber-900 underline font-semibold flex-shrink-0 text-[11px]">
+            <i class="fa-solid fa-pen-to-square"></i> Sửa tin
+        </button>
+    </div>
+
+    <!-- MAIN CONTAINER -->
+    <div class="flex-1 flex flex-col md:flex-row overflow-hidden relative">
+        <!-- BẢN ĐỒ SVG -->
+        <div class="flex-1 bg-slate-200 p-3 md:p-4 flex flex-col items-center justify-center relative overflow-auto">
+            <div class="w-full max-w-4xl h-full max-h-[600px] bg-white rounded-xl shadow-sm border border-slate-300 relative overflow-hidden flex flex-col">
+                <div class="bg-slate-50 border-b border-slate-200 px-3 py-2 flex justify-between items-center text-xs text-slate-600">
+                    <span class="font-semibold"><i class="fa-solid fa-map-location-dot text-emerald-600 mr-1"></i> Sơ đồ mặt bằng nhà trường</span>
+                    <span><i class="fa-solid fa-hand-pointer text-amber-500 mr-1"></i> Nhấp chọn vị trí sự cố trên bản đồ</span>
+                </div>
+                <div class="flex-1 relative w-full h-full min-h-[350px] bg-slate-50">
+                    <svg id="school-map" viewBox="0 0 800 500" class="w-full h-full cursor-crosshair select-none" onclick="handleMapClick(event)">
+                        <rect width="800" height="500" fill="#f8fafc"/>
+                        <rect x="20" y="20" width="760" height="460" fill="#f1f5f9" rx="12" stroke="#cbd5e1" stroke-width="2"/>
+                        <rect x="240" y="150" width="320" height="200" fill="#dcfce7" rx="8" stroke="#86efac" stroke-width="2"/>
+                        <text x="400" y="255" font-size="14" font-weight="bold" fill="#166534" text-anchor="middle">SÂN TRƯỜNG & KHU SINH HOẠT CHUNG</text>
+                        <rect x="50" y="40" width="310" height="90" fill="#e0f2fe" stroke="#0284c7" stroke-width="2.5" rx="6"/>
+                        <text x="205" y="80" font-size="13" font-weight="bold" fill="#0369a1" text-anchor="middle">KHỐI A: BAN GIÁM HIỆU & PHÒNG THPT</text>
+                        <rect x="440" y="40" width="310" height="90" fill="#fef3c7" stroke="#d97706" stroke-width="2.5" rx="6"/>
+                        <text x="595" y="80" font-size="13" font-weight="bold" fill="#b45309" text-anchor="middle">KHỐI B: DÃY PHÒNG HỌC THCS</text>
+                        <rect x="50" y="370" width="280" height="90" fill="#f0fdf4" stroke="#16a34a" stroke-width="2.5" rx="6"/>
+                        <text x="190" y="420" font-size="13" font-weight="bold" fill="#15803d" text-anchor="middle">NHÀ THỂ THAO ĐA NĂNG
